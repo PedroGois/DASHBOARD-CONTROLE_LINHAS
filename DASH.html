@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Gerencial de Telefonia</title>
+  <link rel="stylesheet" href="assets/style.css">
+  
+</head>
+<body>
+<div class="container">
+
+  <!-- Cabeçalho -->
+  <header>
+    <div class="header-title">
+      <h1>Dashboard Gerencial de Telefonia</h1>
+      <p class="timestamp" id="timestampDashboard">Carregando...</p>
+    </div>
+    <button class="btn-action" onclick="window.location.reload()">🔄 Atualizar</button>
+  </header>
+
+  <!-- Aviso sem dados -->
+  <div id="avisoDados" class="aviso">
+    ⚠️ <strong>Atenção:</strong> Base não gerada. Execute a opção
+    <strong>7 — Atualizar Dashboard</strong> no menu de automação.
+  </div>
+
+  <!-- Filtros -->
+  <div class="filtros-wrapper">
+    <div class="campo">
+      <label for="filtroOperadora">Operadora</label>
+      <select id="filtroOperadora">
+        <option value="TODAS">Todas as Operadoras</option>
+        <option value="VIVO">VIVO</option>
+        <option value="TIM">TIM</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtroCdc">Centro de Custo</label>
+      <select id="filtroCdc">
+        <option value="TODOS">Todos os Centros de Custo</option>
+      </select>
+    </div>
+    <button class="btn-limpar" onclick="limparFiltrosDetalhe()">✕ Limpar filtros</button>
+  </div>
+
+  <!-- Totalizador Dinâmico -->
+  <div class="totalizador">
+    <div class="total-left">
+      <div>
+        <div class="total-label" id="totalLabel">Custo Total Geral</div>
+        <div class="total-valor" id="totalValor">R$ 0,00</div>
+        <div class="total-contexto" id="totalContexto">0 linhas</div>
+      </div>
+      <div id="totalDeltaBadge" class="total-badge-delta"></div>
+    </div>
+    <div class="total-right">
+      <div class="total-pill">
+        <span class="total-pill-val" id="pillQtdAtiva">0</span>
+        <span class="total-pill-lbl">Ativas</span>
+      </div>
+      <div class="total-pill">
+        <span class="total-pill-val" id="pillQtdEstoque">0</span>
+        <span class="total-pill-lbl">Estoque</span>
+      </div>
+      <div class="total-pill danger">
+        <span class="total-pill-val" id="pillQtdDesligado">0</span>
+        <span class="total-pill-lbl">Desligados</span>
+      </div>
+      <div class="total-pill warn">
+        <span class="total-pill-val" id="pillQtdVerificar">0</span>
+        <span class="total-pill-lbl">Verificar</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards de Status (clicáveis) -->
+  <section class="cards">
+    <div class="card ativo" id="cardAtiva" onclick="selecionarFiltroCard('ATIVA')" title="Filtrar Ativas">
+      <div class="card-top">
+        <span class="card-label">Linhas Ativas</span>
+        <span id="badgeAtiva" class="trend-badge neutral" style="display:none">—</span>
+      </div>
+      <div class="card-qtd" id="qtdAtiva">0</div>
+      <div class="card-val-row">
+        <span class="card-valor" id="valAtiva">R$ 0,00</span>
+      </div>
+      <div class="card-subtext" id="subAtiva">Base atualizada</div>
+    </div>
+
+    <div class="card estoque" id="cardEstoque" onclick="selecionarFiltroCard('ESTOQUE')" title="Filtrar Estoque">
+      <div class="card-top">
+        <span class="card-label">Em Estoque</span>
+        <span id="badgeEstoque" class="trend-badge neutral" style="display:none">—</span>
+      </div>
+      <div class="card-qtd" id="qtdEstoque">0</div>
+      <div class="card-val-row">
+        <span class="card-valor" id="valEstoque">R$ 0,00</span>
+      </div>
+      <div class="card-subtext" id="subEstoque">Reserva técnica</div>
+    </div>
+
+    <div class="card desligado" id="cardDesligado" onclick="selecionarFiltroCard('DESLIGADO')" title="Filtrar Desligados">
+      <div class="card-top">
+        <span class="card-label">Desligados</span>
+        <span id="badgeDesligado" class="trend-badge neutral" style="display:none">—</span>
+      </div>
+      <div class="card-qtd" id="qtdDesligado">0</div>
+      <div class="card-val-row">
+        <span class="card-valor" id="valDesligado" style="color:var(--desligado)">R$ 0,00</span>
+      </div>
+      <div class="card-subtext" id="subDesligado">Economia potencial</div>
+    </div>
+
+    <div class="card verificar" id="cardVerificar" onclick="selecionarFiltroCard('VERIFICAR')" title="Filtrar a Verificar">
+      <div class="card-top">
+        <span class="card-label">A Verificar</span>
+        <span id="badgeVerificar" class="trend-badge neutral" style="display:none">—</span>
+      </div>
+      <div class="card-qtd" id="qtdVerificar">0</div>
+      <div class="card-val-row">
+        <span class="card-valor" id="valVerificar" style="color:var(--verificar)">R$ 0,00</span>
+      </div>
+      <div class="card-subtext" id="subVerificar">Aguardando validação</div>
+    </div>
+  </section>
+
+  <!-- Abas -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="trocarAba(event,'abaGraficos')">📊 Gráficos</button>
+    <button class="tab-btn" onclick="trocarAba(event,'abaResumoCdc')">🏢 Por Centro de Custo</button>
+    <button class="tab-btn" onclick="trocarAba(event,'abaDetalhes')">📋 Linhas Detalhadas</button>
+  </div>
+
+  <!-- Aba: Gráficos -->
+  <div id="abaGraficos" class="tab-content active">
+    <div class="grid-graficos">
+      <div class="painel-grafico">
+        <h3>Top 8 CDCs — Custo Mensal</h3>
+        <div id="graficoCusto"></div>
+      </div>
+      <div class="painel-grafico">
+        <h3>Top 8 CDCs — Pendências</h3>
+        <div id="graficoPendencias"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aba: Resumo por CDC -->
+  <div id="abaResumoCdc" class="tab-content">
+    <div class="tabela-container">
+      <div class="tabela-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Cod</th>
+              <th>Centro de Custo</th>
+              <th class="num">Ativas</th>
+              <th class="num">Estoque</th>
+              <th class="num" style="color:#fca5a5">Desligado</th>
+              <th class="num" style="color:#fcd34d">Verificar</th>
+              <th class="num">Custo Total</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaResumoCdc"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2">TOTAL</td>
+              <td class="num" id="tfAtiva">—</td>
+              <td class="num" id="tfEstoque">—</td>
+              <td class="num" id="tfDesligado">—</td>
+              <td class="num" id="tfVerificar">—</td>
+              <td class="num" id="tfCusto">—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aba: Detalhes por Linha -->
+  <div id="abaDetalhes" class="tab-content">
+    <div class="tabela-container">
+      <div class="tabela-header">
+        <div class="tabela-header-left">
+          <input type="text" id="buscaTexto" placeholder="🔍 Nome, Linha, Chapa, CDC..." style="width:280px">
+          <span class="contador-badge" id="contadorDetalhes">0 registros</span>
+        </div>
+        <div class="total-detalhe" id="totalDetalhes">R$ 0,00</div>
+      </div>
+      <div class="tabela-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Operadora</th>
+              <th>Linha</th>
+              <th>Chapa</th>
+              <th>Nome</th>
+              <th>CDC</th>
+              <th>Centro de Custo</th>
+              <th class="num">Valor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaDetalhes"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6">TOTAL VISÍVEL</td>
+              <td class="num" id="tfDetalhes">—</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Dados gerados pelo Python -->
+<script src="dados/dados_dashboard.js"></script>
+<!-- Lógica do Dashboard -->
+<script src="assets/app.js"></script>
+</body>
+</html>
