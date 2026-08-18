@@ -51,7 +51,13 @@ def salvar_com_backup(arquivo: Path, conteudo: str, sufixo: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Anonimiza a base de dados do Dashboard.")
-    parser.add_argument("pasta", type=Path, help="Pasta que contém dados_dashboard.json e dados_dashboard.js")
+    parser.add_argument(
+        "pasta",
+        type=Path,
+        nargs="?",
+        default=Path(__file__).resolve().parent,
+        help="Pasta que contém dados_dashboard.json e dados_dashboard.js",
+    )
     args = parser.parse_args()
 
     json_path = args.pasta / "dados_dashboard.json"

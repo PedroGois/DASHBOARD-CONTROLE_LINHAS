@@ -29,8 +29,8 @@ async function init() {
     } catch(e) { /* sem servidor local, continua */ }
   }
 
+  document.getElementById('avisoDados').style.display = DADOS.length > 0 ? 'none' : 'block';
   if (!DADOS.length) {
-    document.getElementById('avisoDados').style.display = 'block';
     return;
   }
 
