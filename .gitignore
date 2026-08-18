@@ -1,0 +1,4 @@
+.env
+anonimizar_dados.py
+__pycache__/
+*.log
