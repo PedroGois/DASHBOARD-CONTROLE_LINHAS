@@ -1,9 +1,9 @@
 window.DADOS_TELEFONIA = {
-  "gerado_em": "18/08/2026 às 16:01",
+  "gerado_em": "18/08/2026 às 16:28",
   "total_registros": 707,
   "comparativo": {
     "tem_anterior": true,
-    "data_anterior": "18/08/2026 às 15:04",
+    "data_anterior": "18/08/2026 às 16:27",
     "custo_total": {
       "diff": 0.0,
       "pct": 0.0,
@@ -2196,7 +2196,7 @@ window.DADOS_TELEFONIA = {
       "codCdc": "CDC-FICT-030",
       "cdc": "Centro de Custo Fictício 030",
       "status": "ESTOQUE",
-      "valor": 39.81
+      "valor": 35.37
     },
     {
       "operadora": "TIM",
@@ -3054,7 +3054,7 @@ window.DADOS_TELEFONIA = {
       "codCdc": "CDC-FICT-013",
       "cdc": "Centro de Custo Fictício 013",
       "status": "ATIVA",
-      "valor": 39.59
+      "valor": 79.58
     },
     {
       "operadora": "TIM",
@@ -4330,7 +4330,7 @@ window.DADOS_TELEFONIA = {
       "codCdc": "CDC-FICT-026",
       "cdc": "Centro de Custo Fictício 026",
       "status": "ATIVA",
-      "valor": 48.24
+      "valor": 92.98
     },
     {
       "operadora": "VIVO",

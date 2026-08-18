@@ -2,3 +2,7 @@
 anonimizar_dados.py
 __pycache__/
 *.log
+
+# Backups dos dados do dashboard
+dados/*.backup-*.js
+dados/*.backup-*.json
