@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard Gerencial de Telefonia</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="assets/style.css">
-  
 </head>
 <body>
 <div class="container">
@@ -16,12 +16,12 @@
       <h1>Dashboard Gerencial de Telefonia</h1>
       <p class="timestamp" id="timestampDashboard">Carregando...</p>
     </div>
-    <button class="btn-action" onclick="window.location.reload()">🔄 Atualizar</button>
+    <button class="btn-action" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
   </header>
 
   <!-- Aviso sem dados -->
   <div id="avisoDados" class="aviso">
-    ⚠️ <strong>Atenção:</strong> Base não gerada. Execute a opção
+    <i class="fa-solid fa-triangle-exclamation"></i> <strong>Atenção:</strong> Base não gerada. Execute a opção
     <strong>7 — Atualizar Dashboard</strong> no menu de automação.
   </div>
 
@@ -41,7 +41,7 @@
         <option value="TODOS">Todos os Centros de Custo</option>
       </select>
     </div>
-    <button class="btn-limpar" onclick="limparFiltrosDetalhe()">✕ Limpar filtros</button>
+    <button class="btn-limpar" onclick="limparFiltrosDetalhe()"><i class="fa-solid fa-xmark"></i> Limpar filtros</button>
   </div>
 
   <!-- Totalizador Dinâmico -->
@@ -127,9 +127,9 @@
 
   <!-- Abas -->
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="trocarAba(event,'abaGraficos')">📊 Gráficos</button>
-    <button class="tab-btn" onclick="trocarAba(event,'abaResumoCdc')">🏢 Por Centro de Custo</button>
-    <button class="tab-btn" onclick="trocarAba(event,'abaDetalhes')">📋 Linhas Detalhadas</button>
+    <button class="tab-btn active" onclick="trocarAba(event,'abaGraficos')"><i class="fa-solid fa-chart-column"></i> Gráficos</button>
+    <button class="tab-btn" onclick="trocarAba(event,'abaResumoCdc')"><i class="fa-solid fa-building-columns"></i> Por Centro de Custo</button>
+    <button class="tab-btn" onclick="trocarAba(event,'abaDetalhes')"><i class="fa-solid fa-clipboard-list"></i> Linhas Detalhadas</button>
   </div>
 
   <!-- Aba: Gráficos -->
@@ -183,7 +183,10 @@
     <div class="tabela-container">
       <div class="tabela-header">
         <div class="tabela-header-left">
-          <input type="text" id="buscaTexto" placeholder="🔍 Nome, Linha, Chapa, CDC..." style="width:280px">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="buscaTexto" placeholder="Nome, Linha, Chapa, CDC..." style="width:280px; padding-left: 34px;">
+          </div>
           <span class="contador-badge" id="contadorDetalhes">0 registros</span>
         </div>
         <div class="total-detalhe" id="totalDetalhes">R$ 0,00</div>
