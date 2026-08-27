@@ -16,15 +16,20 @@
       <h1>Dashboard Gerencial de Telefonia</h1>
       <p class="timestamp" id="timestampDashboard">Carregando...</p>
     </div>
-    <button class="btn-action" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
+    <div class="header-actions">
+      <button class="btn-action active" id="btnLinhas" onclick="mostrarSecao('linhas')"><i class="fa-solid fa-phone"></i> Linhas</button>
+      <button class="btn-action" id="btnAparelhos" onclick="mostrarSecao('aparelhos')"><i class="fa-solid fa-mobile-screen-button"></i> Aparelhos</button>
+      <button class="btn-action" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
+    </div>
   </header>
 
   <!-- Aviso sem dados -->
   <div id="avisoDados" class="aviso" style="display:none">
     <i class="fa-solid fa-triangle-exclamation"></i> <strong>Atenção:</strong> Base não gerada. Execute a opção
-    <strong>7 — Atualizar Dashboard</strong> no menu de automação.
+    <strong>1 — Atualizar dados e Dashboard Gerencial</strong> no menu de automação.
   </div>
 
+  <main id="secaoLinhas">
   <!-- Filtros -->
   <div class="filtros-wrapper">
     <div class="campo">
@@ -123,6 +128,13 @@
       </div>
       <div class="card-subtext" id="subVerificar">Aguardando validação</div>
     </div>
+
+    <div class="card frota" id="cardFrota" onclick="selecionarFiltroCard('FROTA')" title="Filtrar Frota">
+      <div class="card-top"><span class="card-label">Frota</span></div>
+      <div class="card-qtd" id="qtdFrota">0</div>
+      <div class="card-val-row"><span class="card-valor" id="valFrota">R$ 0,00</span></div>
+      <div class="card-subtext">Linhas vinculadas a veículos</div>
+    </div>
   </section>
 
   <!-- Abas -->
@@ -153,13 +165,13 @@
         <table>
           <thead>
             <tr>
-              <th>Cod</th>
-              <th>Centro de Custo</th>
-              <th class="num">Ativas</th>
-              <th class="num">Estoque</th>
-              <th class="num" style="color:#fca5a5">Desligado</th>
-              <th class="num" style="color:#fcd34d">Verificar</th>
-              <th class="num">Custo Total</th>
+              <th><button class="th-sort" onclick="ordenarTabela('resumo', 'cod')">Cod <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('resumo', 'cdc')">Centro de Custo <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num"><button class="th-sort" onclick="ordenarTabela('resumo', 'ATIVA')">Ativas <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num"><button class="th-sort" onclick="ordenarTabela('resumo', 'ESTOQUE')">Estoque <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num" style="color:#fca5a5"><button class="th-sort" onclick="ordenarTabela('resumo', 'DESLIGADO')">Desligado <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num" style="color:#fcd34d"><button class="th-sort" onclick="ordenarTabela('resumo', 'VERIFICAR')">Verificar <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num"><button class="th-sort" onclick="ordenarTabela('resumo', 'val')">Custo Total <i class="fa-solid fa-sort"></i></button></th>
             </tr>
           </thead>
           <tbody id="tabelaResumoCdc"></tbody>
@@ -195,14 +207,14 @@
         <table>
           <thead>
             <tr>
-              <th>Operadora</th>
-              <th>Linha</th>
-              <th>Chapa</th>
-              <th>Nome</th>
-              <th>CDC</th>
-              <th>Centro de Custo</th>
-              <th class="num">Valor</th>
-              <th>Status</th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'operadora')">Operadora <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'linha')">Linha <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'chapaCpf')">Chapa <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'nome')">Nome <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'codCdc')">CDC <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'cdc')">Centro de Custo <i class="fa-solid fa-sort"></i></button></th>
+              <th class="num"><button class="th-sort" onclick="ordenarTabela('detalhes', 'valor')">Valor <i class="fa-solid fa-sort"></i></button></th>
+              <th><button class="th-sort" onclick="ordenarTabela('detalhes', 'status')">Status <i class="fa-solid fa-sort"></i></button></th>
             </tr>
           </thead>
           <tbody id="tabelaDetalhes"></tbody>
@@ -217,6 +229,48 @@
       </div>
     </div>
   </div>
+
+  </main>
+
+  <!-- Aba: Aparelhos patrimoniais -->
+  <section id="abaAparelhos" class="aparelhos-section" hidden>
+    <div class="section-title">
+      <div>
+        <h2>Controle de Aparelhos</h2>
+        <p>Registro patrimonial e responsável atual. Não compõe os custos das linhas.</p>
+      </div>
+    </div>
+    <div class="tabela-container">
+      <div class="tabela-header">
+        <div class="tabela-header-left">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="buscaAparelhos" placeholder="Patrimônio, modelo, nome, linha..." style="width:300px; padding-left:34px;">
+          </div>
+          <span class="contador-badge" id="contadorAparelhos">0 aparelhos</span>
+        </div>
+        <div class="aparelhos-status" id="resumoAparelhos"></div>
+      </div>
+      <div class="tabela-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Patrimônio</th>
+              <th>Modelo</th>
+              <th>Linha vinculada</th>
+              <th>Chapa</th>
+              <th>Responsável</th>
+              <th>CDC</th>
+              <th>Centro de Custo</th>
+              <th>Nº de série</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaAparelhos"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
 </div><!-- /container -->
 

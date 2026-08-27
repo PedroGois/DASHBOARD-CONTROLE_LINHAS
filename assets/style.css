@@ -75,6 +75,9 @@ header {
   transition: all .18s ease;
 }
 .btn-action:hover { background: var(--primary-light); border-color: var(--primary); }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.btn-action.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-action.active i { color: #fff; }
 .btn-action i,
 .btn-limpar i,
 .tab-btn i,
@@ -217,6 +220,8 @@ select:focus, input[type="text"]:focus {
 .card.estoque  { border-top: 4px solid var(--estoque); }
 .card.desligado{ border-top: 4px solid var(--desligado); }
 .card.verificar{ border-top: 4px solid var(--verificar); }
+.card.frota    { border-top: 4px solid #8b5cf6; }
+.card.frota .card-valor { color: #8b5cf6; }
 .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .card-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
 .trend-badge {
@@ -242,6 +247,16 @@ select:focus, input[type="text"]:focus {
   gap: 4px;
   border-bottom: 2px solid var(--border);
   margin-bottom: 18px;
+}
+
+.aparelhos-section { margin-top: 22px; }
+.section-title { margin-bottom: 14px; }
+.section-title h2 { margin: 0; font-size: 20px; color: var(--text); }
+.section-title p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .header-actions { gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .header-actions .btn-action { padding: 7px 9px; }
 }
 .tab-btn {
   padding: 9px 18px;
@@ -332,6 +347,7 @@ select:focus, input[type="text"]:focus {
   padding: 3px 10px;
   border-radius: 10px;
 }
+.aparelhos-status { font-size: 12px; font-weight: 700; color: var(--text-muted); }
 .tabela-scroll { max-height: 500px; overflow-y: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid var(--border); }
@@ -346,6 +362,38 @@ th {
   letter-spacing: .5px;
   z-index: 2;
 }
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.th-sort i { opacity: .65; font-size: 10px; }
+.th-sort:hover i, .th-sort.active i { opacity: 1; }
+.copy-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card-bg);
+  color: var(--primary);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.copy-number:hover { background: var(--primary-light); }
+.copy-number.copied { color: var(--ativo); }
 td.num, th.num { text-align: right; }
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: var(--primary-light); }

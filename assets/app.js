@@ -8,7 +8,12 @@
 // ──────────────────────────────────────────
 let statusFiltro = null;
 let DADOS = [];
+let APARELHOS = [];
 let COMP  = {};
+const ordenacao = {
+  resumo: { campo: 'val', direcao: 'desc' },
+  detalhes: { campo: null, direcao: 'asc' }
+};
 
 const fmt = v => Number(v||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 const esc = v => String(v||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -19,18 +24,19 @@ const esc = v => String(v||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;'
 async function init() {
   if (window.DADOS_TELEFONIA?.dados?.length) {
     DADOS = window.DADOS_TELEFONIA.dados;
+    APARELHOS = window.DADOS_TELEFONIA.aparelhos || [];
     COMP  = window.DADOS_TELEFONIA.comparativo || {};
     document.getElementById('timestampDashboard').textContent =
       'Aba Planos · Atualizado em ' + (window.DADOS_TELEFONIA.gerado_em || '—');
   } else {
     try {
       const r = await fetch('dados/dados_dashboard.json');
-      if (r.ok) { const j = await r.json(); DADOS = j.dados||[]; COMP = j.comparativo||{}; }
+      if (r.ok) { const j = await r.json(); DADOS = j.dados||[]; APARELHOS = j.aparelhos||[]; COMP = j.comparativo||{}; }
     } catch(e) { /* sem servidor local, continua */ }
   }
 
-  document.getElementById('avisoDados').style.display = DADOS.length > 0 ? 'none' : 'block';
-  if (!DADOS.length) {
+  document.getElementById('avisoDados').style.display = (DADOS.length || APARELHOS.length) ? 'none' : 'block';
+  if (!DADOS.length && !APARELHOS.length) {
     return;
   }
 
@@ -38,7 +44,9 @@ async function init() {
   document.getElementById('filtroOperadora').addEventListener('change', atualizarTudo);
   document.getElementById('filtroCdc').addEventListener('change', atualizarTudo);
   document.getElementById('buscaTexto').addEventListener('input', atualizarDetalhe);
+  document.getElementById('buscaAparelhos').addEventListener('input', atualizarAparelhos);
   atualizarTudo();
+  atualizarAparelhos();
 }
 
 // ──────────────────────────────────────────
@@ -58,7 +66,9 @@ function obterFiltrados() {
   return DADOS.filter(d => {
     const okOp  = op  === 'TODAS' || d.operadora === op;
     const okCdc = cdc === 'TODOS' || (d.codCdc+'|'+d.cdc) === cdc;
-    const okSt  = !statusFiltro || d.status === statusFiltro;
+    const okSt = !statusFiltro
+      || (statusFiltro === 'FROTA' && String(d.chapaCpf || '').trim().toUpperCase() === 'FROTA')
+      || d.status === statusFiltro;
     return okOp && okCdc && okSt;
   });
 }
@@ -79,6 +89,51 @@ function limparFiltrosDetalhe() {
   document.getElementById('filtroCdc').value = 'TODOS';
   document.getElementById('buscaTexto').value = '';
   atualizarTudo();
+}
+
+function ordenarTabela(tabela, campo) {
+  const atual = ordenacao[tabela];
+  atual.direcao = atual.campo === campo && atual.direcao === 'asc' ? 'desc' : 'asc';
+  atual.campo = campo;
+  atualizarTudo();
+}
+
+function ordenarLinhas(linhas, tabela) {
+  const { campo, direcao } = ordenacao[tabela];
+  if (!campo) return linhas;
+  return [...linhas].sort((a, b) => {
+    const valorA = a[campo] ?? '';
+    const valorB = b[campo] ?? '';
+    const comparacao = typeof valorA === 'number' && typeof valorB === 'number'
+      ? valorA - valorB
+      : String(valorA).localeCompare(String(valorB), 'pt-BR', { numeric: true, sensitivity: 'base' });
+    return direcao === 'asc' ? comparacao : -comparacao;
+  });
+}
+
+async function copiarNumero(numero, botao) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(String(numero || ''));
+    } else {
+      const auxiliar = document.createElement('textarea');
+      auxiliar.value = String(numero || '');
+      document.body.appendChild(auxiliar);
+      auxiliar.select();
+      document.execCommand('copy');
+      auxiliar.remove();
+    }
+    botao.classList.add('copied');
+    botao.innerHTML = '<i class="fa-solid fa-check"></i>';
+    botao.title = 'Número copiado';
+    setTimeout(() => {
+      botao.classList.remove('copied');
+      botao.innerHTML = '<i class="fa-regular fa-copy"></i>';
+      botao.title = 'Copiar número';
+    }, 1200);
+  } catch (e) {
+    botao.title = 'Não foi possível copiar';
+  }
 }
 
 // ──────────────────────────────────────────
@@ -125,10 +180,16 @@ function renderizarTotalizador(itens) {
 //  Cards de Status
 // ──────────────────────────────────────────
 function renderizarCards(itens) {
-  const t = { ATIVA:{q:0,v:0}, ESTOQUE:{q:0,v:0}, DESLIGADO:{q:0,v:0}, VERIFICAR:{q:0,v:0} };
-  itens.forEach(d => { if (t[d.status]) { t[d.status].q++; t[d.status].v += (d.valor||0); } });
+  const t = { ATIVA:{q:0,v:0}, ESTOQUE:{q:0,v:0}, DESLIGADO:{q:0,v:0}, VERIFICAR:{q:0,v:0}, FROTA:{q:0,v:0} };
+  itens.forEach(d => {
+    if (t[d.status]) { t[d.status].q++; t[d.status].v += (d.valor||0); }
+    if (String(d.chapaCpf || '').trim().toUpperCase() === 'FROTA') {
+      t.FROTA.q++;
+      t.FROTA.v += (d.valor || 0);
+    }
+  });
 
-  ['Ativa','Estoque','Desligado','Verificar'].forEach(k => {
+  ['Ativa','Estoque','Desligado','Verificar','Frota'].forEach(k => {
     const ch = k.toUpperCase();
     document.getElementById('qtd'+k).textContent = t[ch].q.toLocaleString('pt-BR');
     document.getElementById('val'+k).textContent = fmt(t[ch].v);
@@ -212,7 +273,7 @@ function renderizarResumoCdc(itens) {
     g[d.status] = (g[d.status]||0) + 1;
     g.val += (d.valor||0);
   });
-  const linhas = [...grupos.values()].sort((a,b) => b.val - a.val);
+  const linhas = ordenarLinhas([...grupos.values()], 'resumo');
 
   document.getElementById('tabelaResumoCdc').innerHTML = linhas.map(g => `
     <tr onclick="filtrarCdcTabela('${esc(g.cod+'|'+g.cdc)}')">
@@ -240,7 +301,7 @@ function renderizarResumoCdc(itens) {
 // ──────────────────────────────────────────
 function atualizarDetalhe() {
   const busca = document.getElementById('buscaTexto').value.trim().toLowerCase();
-  const itens = obterFiltrados().filter(d => {
+  let itens = obterFiltrados().filter(d => {
     if (!busca) return true;
     return (d.nome||'').toLowerCase().includes(busca) ||
            (d.linha||'').toLowerCase().includes(busca) ||
@@ -248,6 +309,7 @@ function atualizarDetalhe() {
            (d.codCdc||'').toLowerCase().includes(busca) ||
            (d.cdc||'').toLowerCase().includes(busca);
   });
+  itens = ordenarLinhas(itens, 'detalhes');
 
   const custo = itens.reduce((s,d) => s + (d.valor||0), 0);
   document.getElementById('contadorDetalhes').textContent = itens.length.toLocaleString('pt-BR') + ' registro(s)';
@@ -257,7 +319,7 @@ function atualizarDetalhe() {
   document.getElementById('tabelaDetalhes').innerHTML = itens.map(d => `
     <tr>
       <td>${esc(d.operadora)}</td>
-      <td><strong>${esc(d.linha)}</strong></td>
+      <td><strong>${esc(d.linha)}</strong><button class="copy-number" data-numero="${esc(d.linha)}" title="Copiar número" aria-label="Copiar número ${esc(d.linha)}" onclick="copiarNumero(this.dataset.numero, this)"><i class="fa-regular fa-copy"></i></button></td>
       <td>${esc(d.chapaCpf)}</td>
       <td>${esc(d.nome)}</td>
       <td>${esc(d.codCdc)}</td>
@@ -265,6 +327,33 @@ function atualizarDetalhe() {
       <td class="num">${fmt(d.valor)}</td>
       <td><span class="tag ${d.status.toLowerCase()}">${esc(d.status)}</span></td>
     </tr>`).join('') || '<tr><td colspan="8" class="vazio">Nenhum registro encontrado</td></tr>';
+}
+
+// ──────────────────────────────────────────
+//  Tabela — Aparelhos patrimoniais
+// ──────────────────────────────────────────
+function atualizarAparelhos() {
+  const busca = document.getElementById('buscaAparelhos').value.trim().toLowerCase();
+  const itens = APARELHOS.filter(a => !busca || [
+    a.patrimonio, a.modelo, a.linha, a.chapa, a.nome, a.codCdc, a.cdc, a.serie, a.status
+  ].some(v => String(v || '').toLowerCase().includes(busca)));
+  const totais = { ATIVA: 0, ESTOQUE: 0, DESLIGADO: 0, VERIFICAR: 0 };
+  itens.forEach(a => { if (totais[a.status] !== undefined) totais[a.status]++; });
+  document.getElementById('contadorAparelhos').textContent = itens.length.toLocaleString('pt-BR') + ' aparelho(s)';
+  document.getElementById('resumoAparelhos').textContent =
+    `Ativos: ${totais.ATIVA} · Estoque: ${totais.ESTOQUE} · Verificar: ${totais.VERIFICAR}`;
+  document.getElementById('tabelaAparelhos').innerHTML = itens.map(a => `
+    <tr>
+      <td><strong>${esc(a.patrimonio)}</strong></td>
+      <td>${esc(a.modelo)}</td>
+      <td>${esc(a.linha || '—')}</td>
+      <td>${esc(a.chapa || '—')}</td>
+      <td>${esc(a.nome || '—')}</td>
+      <td>${esc(a.codCdc)}</td>
+      <td>${esc(a.cdc)}</td>
+      <td>${esc(a.serie || '—')}</td>
+      <td><span class="tag ${String(a.status).toLowerCase()}">${esc(a.status)}</span></td>
+    </tr>`).join('') || '<tr><td colspan="9" class="vazio">Nenhum aparelho encontrado</td></tr>';
 }
 
 // ──────────────────────────────────────────
@@ -277,6 +366,15 @@ function atualizarTudo() {
   renderizarGraficos(itens);
   renderizarResumoCdc(itens);
   atualizarDetalhe();
+}
+
+function mostrarSecao(secao) {
+  const aparelhos = secao === 'aparelhos';
+  document.getElementById('secaoLinhas').hidden = aparelhos;
+  document.getElementById('abaAparelhos').hidden = !aparelhos;
+  document.getElementById('btnLinhas').classList.toggle('active', !aparelhos);
+  document.getElementById('btnAparelhos').classList.toggle('active', aparelhos);
+  if (aparelhos) atualizarAparelhos();
 }
 
 function trocarAba(evt, id) {

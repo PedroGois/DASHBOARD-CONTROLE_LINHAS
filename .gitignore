@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 anonimizar_dados.py
 __pycache__/
 *.log

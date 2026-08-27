@@ -1,4 +1,4 @@
-"""Anonimiza a base JSON/JS consumida pelo Dashboard de Telefonia.
+"""Anonimiza os dados pessoais e identificadores do Dashboard de Telefonia.
 
 Cria backups datados antes de alterar dados_dashboard.json e dados_dashboard.js.
 """
@@ -12,6 +12,9 @@ from datetime import datetime
 from pathlib import Path
 
 
+SITUACOES_PUBLICAS = {"FROTA", "FAMILIA", "FORA SIGO"}
+
+
 def novo(mapa: dict[str, str], original: object, rotulo: str) -> str | None:
     if original is None or str(original).strip() == "":
         return original
@@ -21,24 +24,60 @@ def novo(mapa: dict[str, str], original: object, rotulo: str) -> str | None:
     return mapa[chave]
 
 
-def anonimizar(registros: list[dict]) -> list[dict]:
+def anonimizar_centro(registro: dict, centros: dict[tuple[str, str], int]) -> None:
+    """Substitui o CDC, preservando o vínculo entre linhas e aparelhos."""
+    codigo = str(registro.get("codCdc") or "").strip()
+    descricao = str(registro.get("cdc") or "").strip()
+    if not codigo and not descricao:
+        return
+
+    chave = (codigo, descricao)
+    indice = centros.setdefault(chave, len(centros) + 1)
+    registro["codCdc"] = f"CDC-FICT-{indice:03d}"
+    registro["cdc"] = f"Centro de Custo Fictício {indice:03d}"
+
+
+def anonimizar_identificador(
+    mapa: dict[str, str],
+    original: object,
+    *,
+    preservar_situacao: bool = False,
+) -> str | None:
+    """Anonimiza CPF, chapa e identificadores, mantendo marcadores do processo."""
+    if preservar_situacao and str(original or "").strip().upper() in SITUACOES_PUBLICAS:
+        return str(original).strip().upper()
+    return novo(mapa, original, "Identificador Fictício")
+
+
+def anonimizar(dados: list[dict], aparelhos: list[dict]) -> None:
+    """Anonimiza linhas e aparelhos com os mesmos mapas de relacionamento."""
     nomes: dict[str, str] = {}
     linhas: dict[str, str] = {}
-    centros: dict[str, int] = {}
+    identificadores: dict[str, str] = {}
+    patrimonios: dict[str, str] = {}
+    series: dict[str, str] = {}
+    imeis: dict[str, str] = {}
+    centros: dict[tuple[str, str], int] = {}
 
-    for registro in registros:
+    for registro in dados:
         registro["nome"] = novo(nomes, registro.get("nome"), "Pessoa")
         registro["linha"] = novo(linhas, registro.get("linha"), "Linha")
+        registro["cpf"] = anonimizar_identificador(identificadores, registro.get("cpf"))
+        registro["chapaCpf"] = anonimizar_identificador(
+            identificadores,
+            registro.get("chapaCpf"),
+            preservar_situacao=True,
+        )
+        anonimizar_centro(registro, centros)
 
-        # CDC e código do CDC recebem a mesma numeração fictícia, preservando
-        # o vínculo entre ambos para que os filtros e totais do Dashboard sigam funcionais.
-        chave_centro = str(registro.get("codCdc") or registro.get("cdc") or "").strip()
-        if chave_centro:
-            indice = centros.setdefault(chave_centro, len(centros) + 1)
-            registro["codCdc"] = f"CDC-FICT-{indice:03d}"
-            registro["cdc"] = f"Centro de Custo Fictício {indice:03d}"
-
-    return registros
+    for aparelho in aparelhos:
+        aparelho["nome"] = novo(nomes, aparelho.get("nome"), "Pessoa")
+        aparelho["linha"] = novo(linhas, aparelho.get("linha"), "Linha")
+        aparelho["chapa"] = anonimizar_identificador(identificadores, aparelho.get("chapa"))
+        aparelho["patrimonio"] = novo(patrimonios, aparelho.get("patrimonio"), "Patrimônio Fictício")
+        aparelho["serie"] = novo(series, aparelho.get("serie"), "Série Fictícia")
+        aparelho["imei"] = novo(imeis, aparelho.get("imei"), "IMEI Fictício")
+        anonimizar_centro(aparelho, centros)
 
 
 def salvar_com_backup(arquivo: Path, conteudo: str, sufixo: str) -> None:
@@ -69,7 +108,10 @@ def main() -> None:
     if not isinstance(base.get("dados"), list):
         parser.error("O campo 'dados' não foi encontrado ou não é uma lista.")
 
-    anonimizar(base["dados"])
+    if not isinstance(base.get("aparelhos"), list):
+        parser.error("O campo 'aparelhos' não foi encontrado ou não é uma lista.")
+
+    anonimizar(base["dados"], base["aparelhos"])
     texto_json = json.dumps(base, ensure_ascii=False, indent=2) + "\n"
     texto_js = "window.DADOS_TELEFONIA = " + texto_json
     sufixo = datetime.now().strftime("%Y%m%d-%H%M%S")
