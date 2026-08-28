@@ -8,7 +8,9 @@ As informações de telefonia ficam em planilhas operacionais e precisam ser con
 
 Este dashboard transforma a base tratada pela Automação de Telefonia em uma visão simples para consulta no navegador.
 
-Ele mostra indicadores, filtros e listas de linhas e aparelhos. O dashboard não consulta o SIGO e não altera a planilha operacional.
+Ele mostra indicadores, filtros e listas de linhas, aparelhos e parcelamentos. O dashboard não consulta o SIGO e não altera a planilha operacional.
+
+Os fechamentos são separados por competência. A competência de `Planos` vem de **DT FECHAMENTO**; em `Parcelamentos`, o período da parcela corresponde ao fechamento do mês seguinte (por exemplo, julho compõe o fechamento de agosto). Os indicadores comparam sempre competências consecutivas, com verde para redução de custo e vermelho para aumento.
 
 ~~~text
 Planilhas corporativas
@@ -48,6 +50,8 @@ Os arquivos de backup gerados pela anonimização são ignorados pelo Git.
 ## 📌 Regras
 
 - O dashboard é para consulta e acompanhamento; ele não é a fonte operacional.
+- Não some meses diferentes: use o seletor de competência no topo do dashboard.
+- Parcelamentos com status **Pago** ficam visíveis, mas não entram no custo mensal consolidado.
 - Não envie ao Git dados pessoais, linhas telefônicas reais, centros de custo identificáveis, credenciais ou planilhas brutas.
 - Não edite manualmente os arquivos da pasta **dados**. Eles são atualizados pela automação.
 - Sempre execute a anonimização antes de publicar uma versão atualizada do dashboard.

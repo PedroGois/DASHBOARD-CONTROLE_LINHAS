@@ -19,6 +19,8 @@
     <div class="header-actions">
       <button class="btn-action active" id="btnLinhas" onclick="mostrarSecao('linhas')"><i class="fa-solid fa-phone"></i> Linhas</button>
       <button class="btn-action" id="btnAparelhos" onclick="mostrarSecao('aparelhos')"><i class="fa-solid fa-mobile-screen-button"></i> Aparelhos</button>
+      <button class="btn-action" id="btnParcelamentos" onclick="mostrarSecao('parcelamentos')"><i class="fa-solid fa-file-invoice-dollar"></i> Parcelamentos</button>
+      <button class="btn-action theme-toggle" id="btnTema" type="button" onclick="alternarTema()" aria-pressed="false" title="Ativar modo escuro"><i class="fa-solid fa-moon"></i> <span>Modo escuro</span></button>
       <button class="btn-action" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
     </div>
   </header>
@@ -28,6 +30,42 @@
     <i class="fa-solid fa-triangle-exclamation"></i> <strong>Atenção:</strong> Base não gerada. Execute a opção
     <strong>1 — Atualizar dados e Dashboard Gerencial</strong> no menu de automação.
   </div>
+
+  <div id="avisoQualidade" class="aviso aviso-qualidade" style="display:none"></div>
+
+  <section class="competencia-bar">
+    <div class="campo competencia-campo">
+      <label for="filtroCompetencia">Competência do fechamento</label>
+      <select id="filtroCompetencia"></select>
+    </div>
+    <div class="competencia-contexto">
+      <strong id="competenciaAtual">—</strong>
+      <span id="competenciaComparacao">Sem base anterior</span>
+    </div>
+  </section>
+
+  <section class="cards cards-financeiro">
+    <div class="card financeiro">
+      <div class="card-top"><span class="card-label">Custo das linhas</span><span id="badgeCustoLinhas" class="trend-badge neutral">—</span></div>
+      <div class="card-qtd card-qtd-moeda" id="custoLinhas">R$ 0,00</div>
+      <div class="card-subtext" id="subCustoLinhas">Na competência</div>
+    </div>
+    <div class="card financeiro parcelas">
+      <div class="card-top"><span class="card-label">Parcelas pagando</span><span id="badgeCustoParcelas" class="trend-badge neutral">—</span></div>
+      <div class="card-qtd card-qtd-moeda" id="custoParcelas">R$ 0,00</div>
+      <div class="card-subtext" id="subCustoParcelas">0 parcelamentos</div>
+    </div>
+    <div class="card financeiro consolidado">
+      <div class="card-top"><span class="card-label">Custo consolidado</span><span id="badgeConsolidado" class="trend-badge neutral">—</span></div>
+      <div class="card-qtd card-qtd-moeda" id="custoConsolidado">R$ 0,00</div>
+      <div class="card-subtext" id="subConsolidado">Linhas + aparelhos</div>
+    </div>
+    <div class="card financeiro termo">
+      <div class="card-top"><span class="card-label">Termos pendentes</span></div>
+      <div class="card-qtd" id="qtdTermosPendentes">0</div>
+      <div class="card-subtext" id="subTermosPendentes">Não ou sem preenchimento</div>
+    </div>
+  </section>
 
   <main id="secaoLinhas">
   <!-- Filtros -->
@@ -267,6 +305,42 @@
             </tr>
           </thead>
           <tbody id="tabelaAparelhos"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Aba: Parcelamentos mensais -->
+  <section id="abaParcelamentos" class="aparelhos-section" hidden>
+    <div class="section-title">
+      <div>
+        <h2>Controle de Parcelamentos</h2>
+        <p>Fechamento mensal de aparelhos, parcelas e termos de responsabilidade.</p>
+      </div>
+    </div>
+    <div class="cards cards-parcelamentos">
+      <div class="card parcelas"><div class="card-label">Pagando</div><div class="card-qtd" id="qtdParcelasPagando">0</div><div class="card-valor" id="valParcelasPagando">R$ 0,00</div></div>
+      <div class="card pago"><div class="card-label">Pagos</div><div class="card-qtd" id="qtdParcelasPagas">0</div><div class="card-valor" id="valParcelasPagas">R$ 0,00</div></div>
+      <div class="card ativo"><div class="card-label">Termos entregues</div><div class="card-qtd" id="qtdTermosSim">0</div><div class="card-subtext">Marcados como Sim</div></div>
+      <div class="card verificar"><div class="card-label">Termos pendentes</div><div class="card-qtd" id="qtdTermosNao">0</div><div class="card-subtext">Não ou em branco</div></div>
+    </div>
+    <div class="filtros-wrapper">
+      <div class="campo"><label for="filtroStatusParcela">Status</label><select id="filtroStatusParcela"><option value="TODOS">Todos</option><option value="PAGANDO">Pagando</option><option value="PAGO">Pago</option></select></div>
+      <div class="campo"><label for="filtroTermoParcela">Termo</label><select id="filtroTermoParcela"><option value="TODOS">Todos</option><option value="SIM">Sim</option><option value="NAO">Não</option><option value="PENDENTE">Pendente / vazio</option></select></div>
+      <div class="campo"><label for="filtroCdcParcela">Centro de Custo</label><select id="filtroCdcParcela"><option value="TODOS">Todos os Centros de Custo</option></select></div>
+      <div class="campo"><label for="buscaParcelamentos">Busca</label><input type="text" id="buscaParcelamentos" placeholder="Nome, linha ou série..."></div>
+      <button class="btn-limpar" onclick="limparFiltrosParcelamentos()"><i class="fa-solid fa-xmark"></i> Limpar filtros</button>
+    </div>
+    <div class="tabela-container">
+      <div class="tabela-header">
+        <span class="contador-badge" id="contadorParcelamentos">0 registros</span>
+        <div class="total-detalhe" id="totalParcelamentos">R$ 0,00</div>
+      </div>
+      <div class="tabela-scroll">
+        <table>
+          <thead><tr><th>Período da parcela</th><th>Nome</th><th>Linha</th><th>CDC</th><th>Nº de série</th><th class="num">Valor mensal</th><th>Parcela</th><th>Status</th><th>Termo</th></tr></thead>
+          <tbody id="tabelaParcelamentos"></tbody>
+          <tfoot><tr><td colspan="5">TOTAL VISÍVEL</td><td class="num" id="tfParcelamentos">R$ 0,00</td><td colspan="3"></td></tr></tfoot>
         </table>
       </div>
     </div>

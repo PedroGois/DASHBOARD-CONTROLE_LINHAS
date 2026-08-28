@@ -9,7 +9,10 @@
 let statusFiltro = null;
 let DADOS = [];
 let APARELHOS = [];
-let COMP  = {};
+let PARCELAMENTOS = [];
+let VALIDACOES = [];
+let COMPETENCIAS = [];
+let competenciaSelecionada = '';
 const ordenacao = {
   resumo: { campo: 'val', direcao: 'desc' },
   detalhes: { campo: null, direcao: 'asc' }
@@ -18,43 +21,141 @@ const ordenacao = {
 const fmt = v => Number(v||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 const esc = v => String(v||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+function aplicarTema(tema) {
+  const escuro = tema === 'dark';
+  document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
+  const botao = document.getElementById('btnTema');
+  if (!botao) return;
+  botao.setAttribute('aria-pressed', String(escuro));
+  botao.title = escuro ? 'Ativar modo claro' : 'Ativar modo escuro';
+  botao.innerHTML = escuro
+    ? '<i class="fa-solid fa-sun"></i> <span>Modo claro</span>'
+    : '<i class="fa-solid fa-moon"></i> <span>Modo escuro</span>';
+}
+
+function alternarTema() {
+  const proximo = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('temaDashboardTelefonia', proximo);
+  aplicarTema(proximo);
+}
+
 // ──────────────────────────────────────────
 //  Bootstrap
 // ──────────────────────────────────────────
 async function init() {
+  const temaSalvo = localStorage.getItem('temaDashboardTelefonia');
+  aplicarTema(temaSalvo || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   if (window.DADOS_TELEFONIA?.dados?.length) {
     DADOS = window.DADOS_TELEFONIA.dados;
     APARELHOS = window.DADOS_TELEFONIA.aparelhos || [];
-    COMP  = window.DADOS_TELEFONIA.comparativo || {};
+    PARCELAMENTOS = window.DADOS_TELEFONIA.parcelamentos || [];
+    VALIDACOES = window.DADOS_TELEFONIA.validacoes || [];
+    COMPETENCIAS = window.DADOS_TELEFONIA.competencias || [];
     document.getElementById('timestampDashboard').textContent =
       'Aba Planos · Atualizado em ' + (window.DADOS_TELEFONIA.gerado_em || '—');
   } else {
     try {
       const r = await fetch('dados/dados_dashboard.json');
-      if (r.ok) { const j = await r.json(); DADOS = j.dados||[]; APARELHOS = j.aparelhos||[]; COMP = j.comparativo||{}; }
+      if (r.ok) {
+        const j = await r.json();
+        DADOS = j.dados || [];
+        APARELHOS = j.aparelhos || [];
+        PARCELAMENTOS = j.parcelamentos || [];
+        VALIDACOES = j.validacoes || [];
+        COMPETENCIAS = j.competencias || [];
+      }
     } catch(e) { /* sem servidor local, continua */ }
   }
 
-  document.getElementById('avisoDados').style.display = (DADOS.length || APARELHOS.length) ? 'none' : 'block';
-  if (!DADOS.length && !APARELHOS.length) {
+  document.getElementById('avisoDados').style.display = (DADOS.length || APARELHOS.length || PARCELAMENTOS.length) ? 'none' : 'block';
+  if (!DADOS.length && !APARELHOS.length && !PARCELAMENTOS.length) {
     return;
   }
 
+  preencherCompetencias();
   preencherSelectCdc();
+  preencherSelectCdcParcelas();
+  renderizarAlertas();
+  document.getElementById('filtroCompetencia').addEventListener('change', trocarCompetencia);
   document.getElementById('filtroOperadora').addEventListener('change', atualizarTudo);
   document.getElementById('filtroCdc').addEventListener('change', atualizarTudo);
   document.getElementById('buscaTexto').addEventListener('input', atualizarDetalhe);
   document.getElementById('buscaAparelhos').addEventListener('input', atualizarAparelhos);
+  document.getElementById('filtroStatusParcela').addEventListener('change', atualizarParcelamentos);
+  document.getElementById('filtroTermoParcela').addEventListener('change', atualizarParcelamentos);
+  document.getElementById('filtroCdcParcela').addEventListener('change', atualizarParcelamentos);
+  document.getElementById('buscaParcelamentos').addEventListener('input', atualizarParcelamentos);
   atualizarTudo();
   atualizarAparelhos();
+  atualizarParcelamentos();
 }
 
 // ──────────────────────────────────────────
 //  Filtros
 // ──────────────────────────────────────────
+function rotuloCompetencia(comp) {
+  if (!comp) return '—';
+  const [ano, mes] = comp.split('-').map(Number);
+  return new Intl.DateTimeFormat('pt-BR', { month:'long', year:'numeric' })
+    .format(new Date(ano, mes - 1, 1)).replace(/^./, c => c.toUpperCase());
+}
+
+function competenciaAnterior(comp) {
+  if (!comp) return '';
+  const [ano, mes] = comp.split('-').map(Number);
+  const data = new Date(ano, mes - 2, 1);
+  return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function preencherCompetencias() {
+  if (!COMPETENCIAS.length) {
+    COMPETENCIAS = [...new Set([...DADOS, ...PARCELAMENTOS].map(x => x.competencia).filter(Boolean))].sort();
+  }
+  const comuns = COMPETENCIAS.filter(c => DADOS.some(d => d.competencia === c) && PARCELAMENTOS.some(p => p.competencia === c));
+  competenciaSelecionada = comuns.at(-1) || COMPETENCIAS.at(-1) || '';
+  const select = document.getElementById('filtroCompetencia');
+  select.innerHTML = [...COMPETENCIAS].reverse().map(c => `<option value="${esc(c)}">${esc(rotuloCompetencia(c))}</option>`).join('');
+  select.value = competenciaSelecionada;
+  atualizarContextoCompetencia();
+}
+
+function trocarCompetencia() {
+  competenciaSelecionada = document.getElementById('filtroCompetencia').value;
+  statusFiltro = null;
+  preencherSelectCdc();
+  preencherSelectCdcParcelas();
+  atualizarContextoCompetencia();
+  atualizarTudo();
+  atualizarParcelamentos();
+}
+
+function atualizarContextoCompetencia() {
+  const anterior = competenciaAnterior(competenciaSelecionada);
+  document.getElementById('competenciaAtual').textContent = rotuloCompetencia(competenciaSelecionada);
+  const temAnterior = DADOS.some(d => d.competencia === anterior) || PARCELAMENTOS.some(p => p.competencia === anterior);
+  document.getElementById('competenciaComparacao').textContent = temAnterior
+    ? `Comparando com ${rotuloCompetencia(anterior)}`
+    : 'Sem base anterior completa';
+}
+
+function renderizarAlertas() {
+  const el = document.getElementById('avisoQualidade');
+  if (!VALIDACOES.length) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i><div><strong>Qualidade dos dados:</strong> ${VALIDACOES.map(v => esc(v.mensagem)).join(' · ')}</div>`;
+}
+
 function preencherSelectCdc() {
   const s = document.getElementById('filtroCdc');
-  const unicos = [...new Map(DADOS.map(d => [d.codCdc+'|'+d.cdc, d])).values()]
+  const unicos = [...new Map(DADOS.filter(d => d.competencia === competenciaSelecionada).map(d => [d.codCdc+'|'+d.cdc, d])).values()]
+    .sort((a,b) => (a.codCdc+' '+a.cdc).localeCompare(b.codCdc+' '+b.cdc, 'pt-BR'));
+  s.innerHTML = '<option value="TODOS">Todos os Centros de Custo</option>' +
+    unicos.map(c => `<option value="${esc(c.codCdc+'|'+c.cdc)}">${esc(c.codCdc+' — '+c.cdc)}</option>`).join('');
+}
+
+function preencherSelectCdcParcelas() {
+  const s = document.getElementById('filtroCdcParcela');
+  const unicos = [...new Map(PARCELAMENTOS.filter(p => p.competencia === competenciaSelecionada).map(p => [p.codCdc+'|'+p.cdc, p])).values()]
     .sort((a,b) => (a.codCdc+' '+a.cdc).localeCompare(b.codCdc+' '+b.cdc, 'pt-BR'));
   s.innerHTML = '<option value="TODOS">Todos os Centros de Custo</option>' +
     unicos.map(c => `<option value="${esc(c.codCdc+'|'+c.cdc)}">${esc(c.codCdc+' — '+c.cdc)}</option>`).join('');
@@ -64,12 +165,13 @@ function obterFiltrados() {
   const op  = document.getElementById('filtroOperadora').value;
   const cdc = document.getElementById('filtroCdc').value;
   return DADOS.filter(d => {
+    const okCompetencia = d.competencia === competenciaSelecionada;
     const okOp  = op  === 'TODAS' || d.operadora === op;
     const okCdc = cdc === 'TODOS' || (d.codCdc+'|'+d.cdc) === cdc;
     const okSt = !statusFiltro
       || (statusFiltro === 'FROTA' && String(d.chapaCpf || '').trim().toUpperCase() === 'FROTA')
       || d.status === statusFiltro;
-    return okOp && okCdc && okSt;
+    return okCompetencia && okOp && okCdc && okSt;
   });
 }
 
@@ -143,7 +245,11 @@ function renderizarTotalizador(itens) {
   const op  = document.getElementById('filtroOperadora').value;
   const cdc = document.getElementById('filtroCdc').value;
 
-  const custo = itens.reduce((s,d) => s + (d.valor||0), 0);
+  const custoLinhas = itens.reduce((s,d) => s + (d.valor||0), 0);
+  const semFiltros = op === 'TODAS' && cdc === 'TODOS' && !statusFiltro;
+  const parcelasPagando = PARCELAMENTOS.filter(p => p.competencia === competenciaSelecionada && p.status === 'PAGANDO');
+  const custoParcelas = parcelasPagando.reduce((s,p) => s + (p.valorMensal||0), 0);
+  const custo = custoLinhas + (semFiltros ? custoParcelas : 0);
   const qtd   = itens.length;
 
   const labels = [];
@@ -151,10 +257,11 @@ function renderizarTotalizador(itens) {
   if (cdc !== 'TODOS') labels.push(cdc.split('|')[1] || cdc);
   if (statusFiltro)    labels.push(statusFiltro);
 
-  document.getElementById('totalLabel').textContent    = labels.length ? 'Custo Filtrado' : 'Custo Total Geral';
+  document.getElementById('totalLabel').textContent    = labels.length ? 'Custo de Linhas Filtrado' : 'Custo Mensal Consolidado';
   document.getElementById('totalValor').textContent    = fmt(custo);
   document.getElementById('totalContexto').textContent =
     qtd.toLocaleString('pt-BR') + ' linha' + (qtd !== 1 ? 's' : '') +
+    (semFiltros ? ` + ${parcelasPagando.length.toLocaleString('pt-BR')} parcela(s)` : '') +
     (labels.length ? ' · ' + labels.join(' · ') : '');
 
   // Pills por status
@@ -165,15 +272,49 @@ function renderizarTotalizador(itens) {
   document.getElementById('pillQtdDesligado').textContent = ts.DESLIGADO;
   document.getElementById('pillQtdVerificar').textContent = ts.VERIFICAR;
 
-  // Badge de delta (somente sem filtros ativos)
   const deltaEl = document.getElementById('totalDeltaBadge');
-  if (COMP.tem_anterior && COMP.custo_total?.tem_anterior && !labels.length) {
-    const pct = COMP.custo_total.pct;
-    deltaEl.style.display = 'block';
-    deltaEl.textContent = (pct > 0 ? '▲ +' : '▼ ') + pct + '% vs. ' + (COMP.data_anterior?.split(' às')[0] || '');
-  } else {
-    deltaEl.style.display = 'none';
+  const anterior = competenciaAnterior(competenciaSelecionada);
+  const linhasAnt = DADOS.filter(d => d.competencia === anterior);
+  const parcelasAnt = PARCELAMENTOS.filter(p => p.competencia === anterior && p.status === 'PAGANDO');
+  const temAnterior = linhasAnt.length > 0 && parcelasAnt.length > 0 && semFiltros;
+  renderDelta(deltaEl, custo, linhasAnt.reduce((s,d)=>s+(d.valor||0),0) + parcelasAnt.reduce((s,p)=>s+(p.valorMensal||0),0), anterior, temAnterior);
+}
+
+function renderDelta(el, atual, anterior, competenciaAnt, disponivel=true) {
+  if (!disponivel || anterior <= 0) {
+    el.style.display = 'inline-flex';
+    el.className = 'trend-badge neutral';
+    el.textContent = 'Sem base anterior';
+    return;
   }
+  const diff = atual - anterior;
+  const pct = (diff / anterior) * 100;
+  el.style.display = 'inline-flex';
+  el.className = 'trend-badge ' + (diff < 0 ? 'down' : diff > 0 ? 'up' : 'neutral');
+  el.textContent = diff === 0 ? `0% vs. ${rotuloCompetencia(competenciaAnt)}` : `${diff < 0 ? '▼' : '▲'} ${Math.abs(pct).toFixed(1)}%`;
+  el.title = `${fmt(Math.abs(diff))} ${diff < 0 ? 'a menos' : 'a mais'} vs. ${rotuloCompetencia(competenciaAnt)}`;
+}
+
+function renderizarResumoFinanceiro() {
+  const anterior = competenciaAnterior(competenciaSelecionada);
+  const linhas = DADOS.filter(d => d.competencia === competenciaSelecionada);
+  const linhasAnt = DADOS.filter(d => d.competencia === anterior);
+  const parcelas = PARCELAMENTOS.filter(p => p.competencia === competenciaSelecionada);
+  const parcelasAnt = PARCELAMENTOS.filter(p => p.competencia === anterior);
+  const pagando = parcelas.filter(p => p.status === 'PAGANDO');
+  const pagandoAnt = parcelasAnt.filter(p => p.status === 'PAGANDO');
+  const custoLinhas = linhas.reduce((s,d)=>s+(d.valor||0),0);
+  const custoLinhasAnt = linhasAnt.reduce((s,d)=>s+(d.valor||0),0);
+  const custoParcelas = pagando.reduce((s,p)=>s+(p.valorMensal||0),0);
+  const custoParcelasAnt = pagandoAnt.reduce((s,p)=>s+(p.valorMensal||0),0);
+  document.getElementById('custoLinhas').textContent = fmt(custoLinhas);
+  document.getElementById('custoParcelas').textContent = fmt(custoParcelas);
+  document.getElementById('custoConsolidado').textContent = fmt(custoLinhas + custoParcelas);
+  document.getElementById('subCustoParcelas').textContent = `${pagando.length} parcelamento(s) pagando`;
+  document.getElementById('qtdTermosPendentes').textContent = parcelas.filter(p => p.termo !== 'SIM').length.toLocaleString('pt-BR');
+  renderDelta(document.getElementById('badgeCustoLinhas'), custoLinhas, custoLinhasAnt, anterior, linhasAnt.length > 0);
+  renderDelta(document.getElementById('badgeCustoParcelas'), custoParcelas, custoParcelasAnt, anterior, parcelasAnt.length > 0);
+  renderDelta(document.getElementById('badgeConsolidado'), custoLinhas + custoParcelas, custoLinhasAnt + custoParcelasAnt, anterior, linhasAnt.length > 0 && parcelasAnt.length > 0);
 }
 
 // ──────────────────────────────────────────
@@ -196,22 +337,21 @@ function renderizarCards(itens) {
     document.getElementById('card'+k)?.classList.toggle('selected', statusFiltro === ch);
   });
 
-  renderBadge('badgeAtiva',    'subAtiva',    COMP.ATIVA);
-  renderBadge('badgeEstoque',  'subEstoque',  COMP.ESTOQUE);
-  renderBadge('badgeDesligado','subDesligado',COMP.DESLIGADO);
-  renderBadge('badgeVerificar','subVerificar',COMP.VERIFICAR);
+  renderBadge('badgeAtiva',    'subAtiva',    'ATIVA');
+  renderBadge('badgeEstoque',  'subEstoque',  'ESTOQUE');
+  renderBadge('badgeDesligado','subDesligado','DESLIGADO');
+  renderBadge('badgeVerificar','subVerificar','VERIFICAR');
 }
 
 function renderBadge(idB, idS, delta) {
   const el  = document.getElementById(idB);
   const sub = document.getElementById(idS);
-  if (!el) return;
-  if (!COMP.tem_anterior || !delta?.tem_anterior) { el.style.display = 'none'; return; }
-  el.style.display = 'inline-flex';
-  const p = delta.pct;
-  el.className = 'trend-badge ' + (p === 0 ? 'neutral' : p < 0 ? 'down' : 'up');
-  el.textContent = p === 0 ? '0%' : (p < 0 ? '▼ ' + Math.abs(p) : '▲ +' + p) + '%';
-  if (sub && COMP.data_anterior) sub.textContent = 'vs. ' + COMP.data_anterior.split(' às')[0];
+  if (!el || !delta) return;
+  const anterior = competenciaAnterior(competenciaSelecionada);
+  const atuais = DADOS.filter(d => d.competencia === competenciaSelecionada && d.status === delta);
+  const anteriores = DADOS.filter(d => d.competencia === anterior && d.status === delta);
+  renderDelta(el, atuais.reduce((s,d)=>s+(d.valor||0),0), anteriores.reduce((s,d)=>s+(d.valor||0),0), anterior, anteriores.length > 0);
+  if (sub) sub.textContent = anteriores.length ? `vs. ${rotuloCompetencia(anterior)}` : 'Sem base anterior';
 }
 
 // ──────────────────────────────────────────
@@ -357,10 +497,68 @@ function atualizarAparelhos() {
 }
 
 // ──────────────────────────────────────────
+//  Parcelamentos mensais
+// ──────────────────────────────────────────
+function obterParcelamentosFiltrados() {
+  const status = document.getElementById('filtroStatusParcela').value;
+  const termo = document.getElementById('filtroTermoParcela').value;
+  const cdc = document.getElementById('filtroCdcParcela').value;
+  const busca = document.getElementById('buscaParcelamentos').value.trim().toLowerCase();
+  return PARCELAMENTOS.filter(p => {
+    const okStatus = status === 'TODOS' || p.status === status;
+    const okTermo = termo === 'TODOS' || (termo === 'PENDENTE' ? !p.termo : p.termo === termo);
+    const okCdc = cdc === 'TODOS' || `${p.codCdc}|${p.cdc}` === cdc;
+    const okBusca = !busca || [p.nome,p.linha,p.serie,p.codCdc,p.cdc].some(v => String(v||'').toLowerCase().includes(busca));
+    return p.competencia === competenciaSelecionada && okStatus && okTermo && okCdc && okBusca;
+  });
+}
+
+function atualizarParcelamentos() {
+  const todos = PARCELAMENTOS.filter(p => p.competencia === competenciaSelecionada);
+  const pagando = todos.filter(p => p.status === 'PAGANDO');
+  const pagos = todos.filter(p => p.status === 'PAGO');
+  const termosSim = todos.filter(p => p.termo === 'SIM');
+  const termosPendentes = todos.filter(p => p.termo !== 'SIM');
+  document.getElementById('qtdParcelasPagando').textContent = pagando.length.toLocaleString('pt-BR');
+  document.getElementById('valParcelasPagando').textContent = fmt(pagando.reduce((s,p)=>s+(p.valorMensal||0),0));
+  document.getElementById('qtdParcelasPagas').textContent = pagos.length.toLocaleString('pt-BR');
+  document.getElementById('valParcelasPagas').textContent = fmt(pagos.reduce((s,p)=>s+(p.valorMensal||0),0));
+  document.getElementById('qtdTermosSim').textContent = termosSim.length.toLocaleString('pt-BR');
+  document.getElementById('qtdTermosNao').textContent = termosPendentes.length.toLocaleString('pt-BR');
+
+  const itens = obterParcelamentosFiltrados();
+  const total = itens.reduce((s,p)=>s+(p.valorMensal||0),0);
+  document.getElementById('contadorParcelamentos').textContent = `${itens.length.toLocaleString('pt-BR')} registro(s)`;
+  document.getElementById('totalParcelamentos').textContent = fmt(total);
+  document.getElementById('tfParcelamentos').textContent = fmt(total);
+  document.getElementById('tabelaParcelamentos').innerHTML = itens.map(p => `
+    <tr>
+      <td>${esc(rotuloCompetencia(p.periodoOrigem))}</td>
+      <td><strong>${esc(p.nome || '—')}</strong></td>
+      <td>${esc(p.linha || '—')}</td>
+      <td>${esc(p.codCdc)} — ${esc(p.cdc)}</td>
+      <td>${esc(p.serie || '—')}</td>
+      <td class="num">${fmt(p.valorMensal)}</td>
+      <td>${p.parcelaAtual || '—'} / ${p.numParcelas || '—'}</td>
+      <td><span class="tag ${p.status.toLowerCase()}">${esc(p.status || 'VERIFICAR')}</span></td>
+      <td><span class="tag ${p.termo === 'SIM' ? 'termo-sim' : 'termo-pendente'}">${esc(p.termo || 'PENDENTE')}</span></td>
+    </tr>`).join('') || '<tr><td colspan="9" class="vazio">Nenhum parcelamento encontrado</td></tr>';
+}
+
+function limparFiltrosParcelamentos() {
+  document.getElementById('filtroStatusParcela').value = 'TODOS';
+  document.getElementById('filtroTermoParcela').value = 'TODOS';
+  document.getElementById('filtroCdcParcela').value = 'TODOS';
+  document.getElementById('buscaParcelamentos').value = '';
+  atualizarParcelamentos();
+}
+
+// ──────────────────────────────────────────
 //  Orquestrador
 // ──────────────────────────────────────────
 function atualizarTudo() {
   const itens = obterFiltrados();
+  renderizarResumoFinanceiro();
   renderizarTotalizador(itens);
   renderizarCards(itens);
   renderizarGraficos(itens);
@@ -370,11 +568,15 @@ function atualizarTudo() {
 
 function mostrarSecao(secao) {
   const aparelhos = secao === 'aparelhos';
-  document.getElementById('secaoLinhas').hidden = aparelhos;
+  const parcelamentos = secao === 'parcelamentos';
+  document.getElementById('secaoLinhas').hidden = aparelhos || parcelamentos;
   document.getElementById('abaAparelhos').hidden = !aparelhos;
-  document.getElementById('btnLinhas').classList.toggle('active', !aparelhos);
+  document.getElementById('abaParcelamentos').hidden = !parcelamentos;
+  document.getElementById('btnLinhas').classList.toggle('active', secao === 'linhas');
   document.getElementById('btnAparelhos').classList.toggle('active', aparelhos);
+  document.getElementById('btnParcelamentos').classList.toggle('active', parcelamentos);
   if (aparelhos) atualizarAparelhos();
+  if (parcelamentos) atualizarParcelamentos();
 }
 
 function trocarAba(evt, id) {
