@@ -85,6 +85,16 @@ async function init() {
   document.getElementById('filtroTermoParcela').addEventListener('change', atualizarParcelamentos);
   document.getElementById('filtroCdcParcela').addEventListener('change', atualizarParcelamentos);
   document.getElementById('buscaParcelamentos').addEventListener('input', atualizarParcelamentos);
+  document.querySelectorAll('[data-status-parcela]').forEach(card => {
+    const aplicarFiltro = () => filtrarParcelamentosPorStatus(card.dataset.statusParcela);
+    card.addEventListener('click', aplicarFiltro);
+    card.addEventListener('keydown', evento => {
+      if (evento.key === 'Enter' || evento.key === ' ') {
+        evento.preventDefault();
+        aplicarFiltro();
+      }
+    });
+  });
   atualizarTudo();
   atualizarAparelhos();
   atualizarParcelamentos();
@@ -505,8 +515,11 @@ function obterParcelamentosFiltrados() {
   const cdc = document.getElementById('filtroCdcParcela').value;
   const busca = document.getElementById('buscaParcelamentos').value.trim().toLowerCase();
   return PARCELAMENTOS.filter(p => {
-    const okStatus = status === 'TODOS' || p.status === status;
-    const okTermo = termo === 'TODOS' || (termo === 'PENDENTE' ? !p.termo : p.termo === termo);
+    const statusParcela = String(p.status || '').trim().toUpperCase();
+    const termoParcela = String(p.termo || '').trim().toUpperCase();
+    const okStatus = status === 'TODOS' || statusParcela === status;
+    // "Pendente / vazio" deve trazer tanto termos marcados como NAO quanto campos em branco.
+    const okTermo = termo === 'TODOS' || (termo === 'PENDENTE' ? termoParcela !== 'SIM' : termoParcela === termo);
     const okCdc = cdc === 'TODOS' || `${p.codCdc}|${p.cdc}` === cdc;
     const okBusca = !busca || [p.nome,p.linha,p.serie,p.codCdc,p.cdc].some(v => String(v||'').toLowerCase().includes(busca));
     return p.competencia === competenciaSelecionada && okStatus && okTermo && okCdc && okBusca;
@@ -543,6 +556,13 @@ function atualizarParcelamentos() {
       <td><span class="tag ${p.status.toLowerCase()}">${esc(p.status || 'VERIFICAR')}</span></td>
       <td><span class="tag ${p.termo === 'SIM' ? 'termo-sim' : 'termo-pendente'}">${esc(p.termo || 'PENDENTE')}</span></td>
     </tr>`).join('') || '<tr><td colspan="9" class="vazio">Nenhum parcelamento encontrado</td></tr>';
+}
+
+function filtrarParcelamentosPorStatus(status) {
+  document.getElementById('filtroStatusParcela').value = status;
+  atualizarParcelamentos();
+  document.getElementById('tabelaParcelamentos').closest('.tabela-container')
+    .scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function limparFiltrosParcelamentos() {

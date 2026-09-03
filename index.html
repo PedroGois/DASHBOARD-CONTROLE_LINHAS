@@ -21,7 +21,6 @@
       <button class="btn-action" id="btnAparelhos" onclick="mostrarSecao('aparelhos')"><i class="fa-solid fa-mobile-screen-button"></i> Aparelhos</button>
       <button class="btn-action" id="btnParcelamentos" onclick="mostrarSecao('parcelamentos')"><i class="fa-solid fa-file-invoice-dollar"></i> Parcelamentos</button>
       <button class="btn-action theme-toggle" id="btnTema" type="button" onclick="alternarTema()" aria-pressed="false" title="Ativar modo escuro"><i class="fa-solid fa-moon"></i> <span>Modo escuro</span></button>
-      <button class="btn-action" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate"></i> Atualizar</button>
     </div>
   </header>
 
@@ -319,8 +318,8 @@
       </div>
     </div>
     <div class="cards cards-parcelamentos">
-      <div class="card parcelas"><div class="card-label">Pagando</div><div class="card-qtd" id="qtdParcelasPagando">0</div><div class="card-valor" id="valParcelasPagando">R$ 0,00</div></div>
-      <div class="card pago"><div class="card-label">Pagos</div><div class="card-qtd" id="qtdParcelasPagas">0</div><div class="card-valor" id="valParcelasPagas">R$ 0,00</div></div>
+      <div class="card parcelas" data-status-parcela="PAGANDO" role="button" tabindex="0" title="Filtrar parcelamentos pagando"><div class="card-label">Pagando</div><div class="card-qtd" id="qtdParcelasPagando">0</div><div class="card-valor" id="valParcelasPagando">R$ 0,00</div></div>
+      <div class="card pago" data-status-parcela="PAGO" role="button" tabindex="0" title="Filtrar parcelamentos pagos"><div class="card-label">Pagos</div><div class="card-qtd" id="qtdParcelasPagas">0</div><div class="card-valor" id="valParcelasPagas">R$ 0,00</div></div>
       <div class="card ativo"><div class="card-label">Termos entregues</div><div class="card-qtd" id="qtdTermosSim">0</div><div class="card-subtext">Marcados como Sim</div></div>
       <div class="card verificar"><div class="card-label">Termos pendentes</div><div class="card-qtd" id="qtdTermosNao">0</div><div class="card-subtext">Não ou em branco</div></div>
     </div>
@@ -348,9 +347,9 @@
 
 </div><!-- /container -->
 
-<!-- Dados gerados pelo Python -->
+<!-- A base real é gerada pela automação em dados/. Carregá-la diretamente
+     evita depender de uma base fictícia que não existe neste projeto. -->
 <script src="dados/dados_dashboard.js"></script>
-<!-- Lógica do Dashboard -->
 <script src="assets/app.js"></script>
 </body>
 </html>
